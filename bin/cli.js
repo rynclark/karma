@@ -1,10 +1,10 @@
-var path = require('path')
-var optimist = require('optimist')
-var fs = require('graceful-fs')
+const path = require('path')
+const optimist = require('optimist')
+const fs = require('graceful-fs')
 
-var Server = require('./server')
-var helper = require('./helper')
-var constant = require('./constants')
+const Server = require('../lib/server')
+const helper = require('../lib/helper')
+const constant = require('../lib/constants')
 
 var processArgs = function (argv, options, fs, path) {
   if (argv.help) {
@@ -232,33 +232,74 @@ var describeCompletion = function () {
     .describe('help', 'Print usage.')
 }
 
-exports.run = function () {
-  var config = exports.process()
+exports.process = function () {
+  var argv = optimist.parse(argsBeforeDoubleDash(process.argv.slice(2)))
+  var options = {
+    cmd: argv._.shift()
+  }
 
-  console.log(config.cmd);
-
-  switch (config.cmd) {
+  switch (options.cmd) {
     case 'start':
-      new Server(config).start(clusters)
+      describeStart()
       break
+
     case 'run':
-      require('./runner').run(config)
+      describeRun()
+      options.clientArgs = parseClientArgs(process.argv)
       break
+
     case 'stop':
-      require('./stopper').stop(config)
+      describeStop()
       break
+
     case 'init':
-      require('./init').init(config)
+      describeInit()
       break
+
     case 'completion':
-      require('./completion').completion(config)
+      describeCompletion()
       break
+
+    default:
+      describeShared()
+      if (!options.cmd) {
+        processArgs(argv, options, fs, path)
+        console.error('Command not specified.')
+      } else {
+        console.error('Unknown command "' + options.cmd + '".')
+      }
+      optimist.showHelp()
+      process.exit(1)
+  }
+
+  return processArgs(argv, options, fs, path)
+}
+
+const config = exports.process();
+
+class Karma {
+  constructor() {
+    this.server = new Server(config);
+
+    this.maxNumber = 2;
+    this.current = 0;
+  }
+
+  launch() {
+    console.log('FUCK');
+    this.current += 1;
   }
 }
 
-// just for testing
-exports.processArgs = processArgs
-exports.parseClientArgs = parseClientArgs
-exports.argsBeforeDoubleDash = argsBeforeDoubleDash
+const instance = new Karma();
 
+for (let i = 0; i < instance.maxNumber; i++) {
+  instance.launch();
+}
 
+(async () => {
+  await instance.server.init();
+  await instance.server.start();
+
+  console.log('est');
+})();
